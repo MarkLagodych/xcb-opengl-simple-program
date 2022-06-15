@@ -20,6 +20,7 @@ xcb_connection_t *connection;
 xcb_screen_t *screen;
 xcb_window_t window;
 xcb_sync_counter_t syncCounter;
+xcb_sync_counter_t syncCounterBasic;
 xcb_sync_int64_t syncValue;
 int W;
 int H;
@@ -146,9 +147,13 @@ void createWindow(void) {
     );
 
     syncCounter = xcb_generate_id(connection);
+    syncCounterBasic = xcb_generate_id(connection);
     syncValue.hi = 0;
     syncValue.lo = 0;
     xcb_sync_create_counter(connection, syncCounter, syncValue);
+    xcb_sync_create_counter(connection, syncCounterBasic, syncValue);
+
+    xcb_sync_counter_t counters[] = { syncCounterBasic, syncCounter };
 
     xcb_change_property(
         connection,
@@ -157,8 +162,8 @@ void createWindow(void) {
         _NET_WM_SYNC_REQUEST_COUNTER,
         XCB_ATOM_CARDINAL,
         SIZEOF_BITS(syncCounter),
-        1,
-        &syncCounter
+        2,
+        counters
     );
 
     xcb_map_window(connection, window);
@@ -219,16 +224,15 @@ void runEventLoop(void) {
                 W = configEvent->width;
                 H = configEvent->height;
 
-                draw();
 
-                updateSyncCounter();
             }
             break;
 
             case XCB_EXPOSE:
             {
+                draw();
+                updateSyncCounter();
                 swapBuffers();
-
                 updateSyncCounter();
             }
             break;
